@@ -1276,7 +1276,7 @@ function clearEditor(editorId){
 
 
 // ══ SUPABASE ══
-var SB_URL="https://aagtllihomtoalxrrzcl.supabase.co",SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZ3RsbGlob210b2FseHJyemNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5ODg1MjksImV4cCI6MjA4OTU2NDUyOX0.LueKdZo858pwVba6Bz3JU9TgK3keF1z1fIzGstIPqBc";
+var SB_URL="https://vncruogrfenyxsboujlo.supabase.co",SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuY3J1b2dyZmVueXhzYm91amxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MjM2NDUsImV4cCI6MjA5NzI5OTY0NX0.4rTyZIjSVKIF08_ibBYTSgbwuUZT7TJicv7xfM1qfLA";
 var SB=supabase.createClient(SB_URL,SB_KEY);
 // 로고는 HTML에 직접 포함됨
 
@@ -1325,39 +1325,47 @@ async function hashPw(pw){var buf=await crypto.subtle.digest("SHA-256",new TextE
 function openMo(id){document.getElementById(id).classList.add("on");}
 function closeMo(id){document.getElementById(id).classList.remove("on");}
 
-// ══ DB ══
-function sbHeaders(){return{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json","Prefer":"return=representation"};}
-async function sbFetch(path,opts,_retry){
-  _retry=_retry||0;
-  try{
-    var res=await fetch(SB_URL+"/rest/v1/"+path,opts);
-    if(!res.ok){var err=await res.json().catch(function(){return{message:"HTTP "+res.status};});throw new Error(err.message||("HTTP "+res.status));}
-    var text=await res.text();
-    return text?JSON.parse(text):[];
-  }catch(e){
-    if(_retry<3){
-      await new Promise(function(r){setTimeout(r,1500*(_retry+1));});
-      return sbFetch(path,opts,_retry+1);
-    }
-    throw e;
+// ══ DB (Supabase JS SDK 방식으로 교체) ══
+async function dbGet(tbl, filter) {
+  var q = SB.from(tbl).select('*');
+  if (filter) {
+    Object.keys(filter).forEach(function(k) { q = q.eq(k, filter[k]); });
   }
+  var res = await q;
+  if (res.error) throw new Error(res.error.message);
+  return res.data || [];
 }
-function toQS(filter){return filter?Object.keys(filter).map(function(k){return k+"=eq."+encodeURIComponent(filter[k]);}).join("&"):"";}
-async function dbGet(tbl,filter){
-  var qs=filter?("?"+toQS(filter)):"";
-  return await sbFetch(tbl+qs,{headers:sbHeaders()});
+
+async function dbIns(tbl, row) {
+  var res = await SB.from(tbl).insert(row).select();
+  if (res.error) throw new Error(res.error.message);
+  return res.data || [];
 }
-async function dbIns(tbl,row){return await sbFetch(tbl,{method:"POST",headers:sbHeaders(),body:JSON.stringify(row)});}
-async function dbUpd(tbl,filter,upd){
-  var qs=filter?("?"+toQS(filter)):"";
-  return await sbFetch(tbl+qs,{method:"PATCH",headers:sbHeaders(),body:JSON.stringify(upd)});
+
+async function dbUpd(tbl, filter, upd) {
+  var q = SB.from(tbl).update(upd);
+  if (filter) {
+    Object.keys(filter).forEach(function(k) { q = q.eq(k, filter[k]); });
+  }
+  var res = await q.select();
+  if (res.error) throw new Error(res.error.message);
+  return res.data || [];
 }
-async function dbDel(tbl,filter){
-  var qs=filter?("?"+toQS(filter)):"";
-  return await sbFetch(tbl+qs,{method:"DELETE",headers:sbHeaders()});
+
+async function dbDel(tbl, filter) {
+  var q = SB.from(tbl).delete();
+  if (filter) {
+    Object.keys(filter).forEach(function(k) { q = q.eq(k, filter[k]); });
+  }
+  var res = await q;
+  if (res.error) throw new Error(res.error.message);
+  return res.data || [];
 }
-async function dbUps(tbl,row,key){
-  return await sbFetch(tbl+"?on_conflict="+key,{method:"POST",headers:Object.assign({},sbHeaders(),{"Prefer":"resolution=merge-duplicates,return=representation"}),body:JSON.stringify(row)});
+
+async function dbUps(tbl, row, key) {
+  var res = await SB.from(tbl).upsert(row, { onConflict: key }).select();
+  if (res.error) throw new Error(res.error.message);
+  return res.data || [];
 }
 
 // ══ SETTINGS LOAD/SAVE ══
