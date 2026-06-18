@@ -1518,7 +1518,6 @@ function afterLogin(){
   if(ntTh)ntTh.style.display=CU.role==="admin"?"table-cell":"none";
   buildSB();updatePendBadge();goPg("dash");
   setLoading(false);
-  if(CU.role==="admin")migrateNoticeTargets();
 }
 
 // ══ SIDEBAR ══
