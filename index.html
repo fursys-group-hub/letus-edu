@@ -1358,12 +1358,6 @@ async function dbUps(tbl,row,key){
   return res.data||[];
 }
 
-async function dbUps(tbl, row, key) {
-  var res = await SB.from(tbl).upsert(row, { onConflict: key }).select();
-  if (res.error) throw new Error(res.error.message);
-  return res.data || [];
-}
-
 // ══ SETTINGS LOAD/SAVE ══
 async function loadSettings(){
   try{
@@ -1427,6 +1421,7 @@ async function initSession(){
     await loadProfile(sess.data.session.user.id);
   } else {
     setLoading(false);
+    document.getElementById("A").style.display="flex";
   }
   SB.auth.onAuthStateChange(async function(event,session){
     if(event==="SIGNED_IN"&&session){
