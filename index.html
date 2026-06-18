@@ -1439,22 +1439,30 @@ async function loadProfile(authUid){
     var res=await SB.from("profiles").select("*").eq("id",authUid).single();
     if(res.error||!res.data){
       alert("관리자 승인 대기 중입니다. 승인 후 로그인해주세요.");
+      async function loadProfile(authUid){
+  try{
+    // .single() 대신 배열로 받아서 처리 (RLS 오류 방지)
+    var res=await SB.from("profiles").select("*").eq("id",authUid);
+    if(res.error){
+      console.error("profiles 조회 오류:",res.error.message);
+      alert("프로필 로드 오류: "+res.error.message);
       await SB.auth.signOut();
       setLoading(false);
       return;
     }
-    CU=res.data;
+    if(!res.data||res.data.length===0){
+      alert("관리자 승인 대기 중입니다. 승인 후 로그인해주세요.");
+      await SB.auth.signOut();
+      setLoading(false);
+      return;
+    }
+    CU=res.data[0];
     afterLogin();
   }catch(e){
     alert("프로필 로드 오류: "+e.message);
     setLoading(false);
   }
 }
-
-async function doLogin(){
-  var email=document.getElementById("l-id").value.trim();
-  var pw=document.getElementById("l-pw").value.trim();
-  if(!email||!pw){alert("이메일과 비밀번호를 입력해주세요.");return;}
   var b=document.getElementById("btn-li");b.disabled=true;b.textContent="확인 중...";
   var res=await SB.auth.signInWithPassword({email:email,password:pw});
   if(res.error){
