@@ -1603,7 +1603,7 @@ async function renderDash(){
   var d=new Date();
   document.getElementById("dash-hi").textContent="안녕하세요, "+CU.name+"님 👋";
   document.getElementById("dash-dt").textContent=d.getFullYear()+"년 "+(d.getMonth()+1)+"월 "+d.getDate()+"일 · "+(CO[CU.company]||CU.company);
-  var allU=await dbGet("users");allU=allU.filter(function(u){return u.role!=="admin";});
+  var allU=await dbGet("profiles");allU=allU.filter(function(u){return u.role!=="admin";});
   var myU=CU.role==="admin"?allU.filter(function(u){return u.company==="letters";}):allU.filter(function(u){return u.company===CU.company;});
   var total=myU.length;
   var completions=await dbGet("completions");var edus=await dbGet("edus");
@@ -1930,7 +1930,7 @@ async function openDet(eduId){
   document.getElementById("det-ttl").textContent=e.title;
   document.getElementById("det-meta").innerHTML="<span>📂 "+catName(e.cat)+"</span><span>⏱ "+(e.dur||"-")+"</span><span>📅 "+e.date+"</span><span>🎯 "+(e.closed?"<b style='color:var(--g400)'>마감</b>":e.req?"<b style='color:var(--ac)'>필수 교육</b>":"선택 교육")+"</span>";
   document.getElementById("det-desc").innerHTML=e.descr||"";
-  var completions=await dbGet("completions");var allU=await dbGet("users");
+  var completions=await dbGet("completions");var allU=await dbGet("profiles");
   var attU=allU.filter(function(u){return u.role!=="admin"&&(CU.role==="admin"||u.company===CU.company);});
   var al=document.getElementById("att-list");clr(al);
   attU.forEach(function(u){
@@ -2017,7 +2017,9 @@ function extractYoutubeId(url){
 }
 
 function initSign(){
-  sCV=document.getElementById("s-cv");sCX=sCV.getContext("2d");sCX.strokeStyle="#1a3a5c";sCX.lineWidth=2;sCX.lineCap="round";
+  sCV=document.getElementById("s-cv");
+  if(!sCV)return;
+  sCX=sCV.getContext("2d");sCX.strokeStyle="#1a3a5c";sCX.lineWidth=2;sCX.lineCap="round";
   sCV.onmousedown=function(e){drawing=true;sCX.beginPath();var r=sCV.getBoundingClientRect();sCX.moveTo((e.clientX-r.left)*(sCV.width/r.width),(e.clientY-r.top)*(sCV.height/r.height));};
   sCV.onmousemove=function(e){if(!drawing)return;var r=sCV.getBoundingClientRect();sCX.lineTo((e.clientX-r.left)*(sCV.width/r.width),(e.clientY-r.top)*(sCV.height/r.height));sCX.stroke();};
   sCV.onmouseup=sCV.onmouseleave=function(){drawing=false;};
@@ -2344,7 +2346,7 @@ async function renderNonReport(){
   var fcat=document.getElementById("f-nrcat").value;
   var fs=(document.getElementById("f-nrsrch").value||"").toLowerCase();
   var fedu=(document.getElementById("f-nredu-srch").value||"").toLowerCase();
-  var users=await dbGet("users");var edus=await dbGet("edus");var completions=await dbGet("completions");
+  var users=await dbGet("profiles");var edus=await dbGet("edus");var completions=await dbGet("completions");
   var lettersUsers=users.filter(function(u){return u.role!=="admin"&&u.company==="letters";});
   var nrSel=document.getElementById("f-nrco");var nrCur=nrSel.value;
   while(nrSel.options.length>1)nrSel.remove(1);
@@ -2397,7 +2399,7 @@ async function printNonReport(){
   var fc=document.getElementById("f-nrco").value;
   var fcat=document.getElementById("f-nrcat").value;
   var fs=document.getElementById("f-nrsrch").value.toLowerCase();
-  var users=await dbGet("users");var edus=await dbGet("edus");var completions=await dbGet("completions");
+  var users=await dbGet("profiles");var edus=await dbGet("edus");var completions=await dbGet("completions");
   var reqEdus=edus.filter(function(e){return e.req&&!e.closed&&(!fcat||e.cat===fcat);});
   var targetUsers=users.filter(function(u){return u.role!=="admin"&&(!fc||u.company===fc)&&(!fs||u.name.indexOf(fs)>=0);});
   var rows=[];
@@ -2481,7 +2483,7 @@ async function getMailRecipients(){
     var emails=raw.split(/[,;\n]+/).map(function(e){return e.trim();}).filter(function(e){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);});
     return emails.map(function(e){return {name:e,email:e};});
   }
-  var users=await dbGet("users");
+  var users=await dbGet("profiles");
   var filtered=users.filter(function(u){return u.role!=="admin";});
   if(target==="noncomp"){
     var completions=await dbGet("completions");var edus=await dbGet("edus");
@@ -2585,16 +2587,16 @@ async function doApprove(id,empType){
   var userData={id:uid2(),name:u.name,uid:u.uid,pw:u.pw,company:u.company,dept:u.dept,role:"user",joined:u.joined,is_new:isNew,new_month:newMonth};
   // email 컬럼이 있으면 포함, 없으면 제외
   try{
-    await dbIns("users",Object.assign({},userData,{email:u.email||""}));
+    await dbIns("profiles",Object.assign({},userData,{email:u.email||""}));
   }catch(e2){
-    await dbIns("users",userData);
+    await dbIns("profiles",userData);
   }
   await dbDel("pending",{id:id});
   toast(u.name+"님이 "+(isNew?"신규직원":"기존직원")+"으로 승인되었습니다.");renderPend();renderMembers();
 }
 async function doReject(id){if(!confirm("이 신청을 거절하시겠습니까?"))return;await dbDel("pending",{id:id});renderPend();}
 async function renderMembers(){
-  var allRows=await dbGet("users");
+  var allRows=await dbGet("profiles");
   var ucoSel=document.getElementById("f-uco");var ucoCur=ucoSel.value;
   while(ucoSel.options.length>1)ucoSel.remove(1);
   var lettersAll=allRows.filter(function(u){return u.role!=="admin"&&u.company==="letters";});
@@ -2636,20 +2638,27 @@ async function renderMembers(){
     return {사업장:"레터스",팀:u.dept||"기타",성명:u.name,아이디:u.uid,이메일:u.email||"",구분:u.is_new?"신규":"기존",가입일:u.joined,이수현황:done2+"/"+req};
   });
 }
-async function doDelUser(id,name){if(!confirm(name+"님을 삭제하시겠습니까?"))return;await dbDel("users",{id:id});renderMembers();}
+async function doDelUser(id,name){if(!confirm(name+"님을 삭제하시겠습니까?"))return;await dbDel("profiles",{id:id});renderMembers();}
 function openRpw(id,name){rpwId=id;document.getElementById("rpw-nm").textContent=name;document.getElementById("rpw-val").value="";openMo("mo-rpw");}
-async function doRpw(){var pw=document.getElementById("rpw-val").value.trim();if(!pw||pw.length<4){alert("4자 이상 입력해주세요.");return;}var hpw=await hashPw(pw);await dbUpd("users",{id:rpwId},{pw:hpw});closeMo("mo-rpw");toast("비밀번호가 변경되었습니다.");renderMembers();}
+async function doRpw(){
+  var pw=document.getElementById("rpw-val").value.trim();
+  if(!pw||pw.length<6){alert("6자 이상 입력해주세요.");return;}
+  // Supabase Auth로 비밀번호 변경
+  var res=await SB.auth.admin.updateUserById(rpwId,{password:pw});
+  if(res.error){alert("비밀번호 변경 실패: "+res.error.message);return;}
+  closeMo("mo-rpw");toast("비밀번호가 변경되었습니다.");
+}
 async function doAddUser(){
   var name=document.getElementById("m-nm").value.trim();var uid3=document.getElementById("m-id").value.trim().toLowerCase();var co=document.getElementById("m-co").value;var dept=document.getElementById("m-dept").value.trim();var pw=document.getElementById("m-pw").value.trim();var empType=document.getElementById("m-type").value;var email=document.getElementById("m-email").value.trim();
   if(!name||!uid3||!dept||!pw){alert("모든 항목을 입력해주세요.");return;}
-  var ex=await dbGet("users",{uid:uid3});if(ex.length){alert("이미 존재하는 아이디입니다.");return;}
+  var ex=await dbGet("profiles",{uid:uid3});if(ex.length){alert("이미 존재하는 아이디입니다.");return;}
   var isNew=empType==="new";
   var hpw=await hashPw(pw);
   var userData={id:uid2(),name:name,uid:uid3,pw:hpw,company:co,dept:dept,role:"user",joined:td(),is_new:isNew,new_month:isNew?td().slice(0,7):""};
   try{
-    await dbIns("users",Object.assign({},userData,{email:email||""}));
+    await dbIns("profiles",Object.assign({},userData,{email:email||""}));
   }catch(e2){
-    await dbIns("users",userData);
+    await dbIns("profiles",userData);
   }
   closeMo("mo-add");toast(name+"님이 추가되었습니다.");renderMembers();buildSB();
 }
@@ -2658,7 +2667,7 @@ async function renderReport(){
   var fc=document.getElementById("f-rco").value;var fcat=document.getElementById("f-rcat").value;
   var fs=(document.getElementById("f-srch").value||"").toLowerCase();
   var fedu=(document.getElementById("f-edu-srch").value||"").toLowerCase();
-  var completions=await dbGet("completions");var users=await dbGet("users");var edus=await dbGet("edus");
+  var completions=await dbGet("completions");var users=await dbGet("profiles");var edus=await dbGet("edus");
   var rcoSel=document.getElementById("f-rco");var rcoCur=rcoSel.value;
   while(rcoSel.options.length>1)rcoSel.remove(1);
   var lettersU=users.filter(function(u){return u.role!=="admin"&&u.company==="letters";});
@@ -3060,7 +3069,7 @@ async function saveEditEdu(){
 // ══ CHARTS ══
 async function renderCharts(){
   Object.keys(_charts).forEach(function(k){try{_charts[k].destroy();}catch(e){}});_charts={};
-  var allU=await dbGet("users");
+  var allU=await dbGet("profiles");
   var lettersU=allU.filter(function(u){return u.role!=="admin"&&u.company==="letters";});
   var cc=await dbGet("completions");var edus=await dbGet("edus");var accidents=await dbGet("accidents");
 
@@ -3099,7 +3108,7 @@ async function renderCharts(){
 }
 
 async function doPrint(){
-  var fc=document.getElementById("f-rco").value;var completions=await dbGet("completions");var users=await dbGet("users");var edus=await dbGet("edus");var rows=[];
+  var fc=document.getElementById("f-rco").value;var completions=await dbGet("completions");var users=await dbGet("profiles");var edus=await dbGet("edus");var rows=[];
   completions.forEach(function(c){var u=null,e=null;for(var i=0;i<users.length;i++){if(users[i].id===c.user_id){u=users[i];break;}}for(var j=0;j<edus.length;j++){if(edus[j].id===c.edu_id){e=edus[j];break;}}if(u&&e&&(!fc||u.company===fc))rows.push({c:c,u:u,e:e});});
   var w=window.open("","_blank");
   var tb=rows.map(function(r){return "<tr><td>"+(CO[r.u.company]||r.u.company)+"</td><td style='font-weight:600'>"+r.u.name+"</td><td>"+r.u.dept+"</td><td>"+r.e.title+"</td><td>"+r.c.date+"</td><td style='color:#2d8a5e;font-weight:600'>&#10003;</td></tr>";}).join("");
