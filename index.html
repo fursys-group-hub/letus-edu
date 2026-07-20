@@ -1315,6 +1315,12 @@ function uid2(){return "id_"+Date.now()+"_"+Math.random().toString(36).slice(2,7
 function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
 function div(cls,txt){return el("div",cls,txt);}
 function btn(cls,txt,fn){var b=el("button",cls,txt);b.addEventListener("click",fn);return b;}
+// escapeHtml: 사용자 입력값을 innerHTML에 쓸 때 반드시 거쳐야 하는 함수
+function escapeHtml(str){
+  if(str==null)return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+// td2: 정적 HTML 마크업(뱃지 등)은 허용, 사용자 데이터는 반드시 escapeHtml 후 전달
 function td2(html,style){var t=el("td");t.innerHTML=html;if(style)t.style.cssText=style;return t;}
 function clr(e){while(e&&e.firstChild)e.removeChild(e.firstChild);}
 function catName(cat){return S.catNames[cat]||cat;}
@@ -1928,7 +1934,7 @@ async function openDet(eduId){
     mediaEl.style.display="none";
   }
   document.getElementById("det-ttl").textContent=e.title;
-  document.getElementById("det-meta").innerHTML="<span>📂 "+catName(e.cat)+"</span><span>⏱ "+(e.dur||"-")+"</span><span>📅 "+e.date+"</span><span>🎯 "+(e.closed?"<b style='color:var(--g400)'>마감</b>":e.req?"<b style='color:var(--ac)'>필수 교육</b>":"선택 교육")+"</span>";
+  document.getElementById("det-meta").innerHTML="<span>📂 "+escapeHtml(catName(e.cat))+"</span><span>⏱ "+escapeHtml(e.dur||"-")+"</span><span>📅 "+escapeHtml(e.date)+"</span><span>🎯 "+(e.closed?"<b style='color:var(--g400)'>마감</b>":e.req?"<b style='color:var(--ac)'>필수 교육</b>":"선택 교육")+"</span>";
   document.getElementById("det-desc").innerHTML=e.descr||"";
   var completions=await dbGet("completions");var allU=await dbGet("profiles");
   var attU=allU.filter(function(u){return u.role!=="admin"&&(CU.role==="admin"||u.company===CU.company);});
@@ -2189,7 +2195,7 @@ async function renderNotice(){
     var tgtLabel=n.target==="전체"?"전체":(CO[n.target]||n.target);
     var row=el("tr");
     row.appendChild(td2("<span class='tbg "+(BMAP[n.type]||"bi")+"'>"+(LB[n.type]||"안내")+"</span>"));
-    var ttlTd=el("td");ttlTd.style.cursor="pointer";ttlTd.innerHTML="<span style='font-weight:500'>"+n.title+"</span>";
+    var ttlTd=el("td");ttlTd.style.cursor="pointer";ttlTd.innerHTML="<span style='font-weight:500'>"+escapeHtml(n.title)+"</span>";
     ttlTd.addEventListener("click",function(){openNtDet(n.id);});row.appendChild(ttlTd);
     row.appendChild(td2(n.ev_date||"-"));row.appendChild(td2(tgtLabel));row.appendChild(td2(n.date));
     if(CU.role==="admin"){
@@ -2622,9 +2628,9 @@ async function renderMembers(){
     var done2=completions.filter(function(c){return c.user_id===u.id;}).length;
     var req=edus.filter(function(e){return e.req&&!e.closed&&(e.target==="all"||e.target===u.company);}).length;
     var row=el("tr");
-    row.appendChild(td2("<strong>"+(u.dept||"기타")+"</strong>"));row.appendChild(td2(u.name));row.appendChild(td2(u.uid));row.appendChild(td2(u.email||"-"));
+    row.appendChild(td2("<strong>"+escapeHtml(u.dept||"기타")+"</strong>"));row.appendChild(td2(escapeHtml(u.name)));row.appendChild(td2(escapeHtml(u.uid||"")));row.appendChild(td2(escapeHtml(u.email||"-")));
     row.appendChild(td2(u.is_new?"<span class='tbg bi'>신규</span>":"<span style='font-size:11px;color:var(--g400)'>기존</span>"));
-    row.appendChild(td2(u.joined));
+    row.appendChild(td2(escapeHtml(u.joined||"")));
     var stTd=el("td");var sp=el("span");sp.style.color=done2>=req&&req>0?"var(--ok)":"var(--wa)";sp.textContent=done2+"/"+req;stTd.appendChild(sp);row.appendChild(stTd);
     var acts=el("td");acts.style.cssText="display:flex;gap:4px";
     acts.appendChild(btn("bsm","🔑",function(){openRpw(u.id,u.name);}));
@@ -3111,7 +3117,7 @@ async function doPrint(){
   var fc=document.getElementById("f-rco").value;var completions=await dbGet("completions");var users=await dbGet("profiles");var edus=await dbGet("edus");var rows=[];
   completions.forEach(function(c){var u=null,e=null;for(var i=0;i<users.length;i++){if(users[i].id===c.user_id){u=users[i];break;}}for(var j=0;j<edus.length;j++){if(edus[j].id===c.edu_id){e=edus[j];break;}}if(u&&e&&(!fc||u.company===fc))rows.push({c:c,u:u,e:e});});
   var w=window.open("","_blank");
-  var tb=rows.map(function(r){return "<tr><td>"+(CO[r.u.company]||r.u.company)+"</td><td style='font-weight:600'>"+r.u.name+"</td><td>"+r.u.dept+"</td><td>"+r.e.title+"</td><td>"+r.c.date+"</td><td style='color:#2d8a5e;font-weight:600'>&#10003;</td></tr>";}).join("");
+  var tb=rows.map(function(r){return "<tr><td>"+escapeHtml(CO[r.u.company]||r.u.company)+"</td><td style='font-weight:600'>"+escapeHtml(r.u.name)+"</td><td>"+escapeHtml(r.u.dept)+"</td><td>"+escapeHtml(r.e.title)+"</td><td>"+escapeHtml(r.c.date)+"</td><td style='color:#2d8a5e;font-weight:600'>&#10003;</td></tr>";}).join("");
   w.document.write("<!DOCTYPE html><html><head><meta charset='UTF-8'><link href='https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap' rel='stylesheet'><title>이수자 명단</title><style>body{font-family:\"Noto Sans KR\",sans-serif;padding:36px}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#3a3d3e;color:#fff;padding:9px}td{padding:8px 10px;border-bottom:1px solid #eee}@media print{body{margin:0}}</style></head><body><div style='text-align:center;margin-bottom:24px;border-bottom:2px solid #3a3d3e;padding-bottom:14px'><h2 style='color:#3a3d3e'>LETUS 임직원 교육 이수 확인서</h2><div style='font-size:12px;color:#999'>출력일: "+new Date().toLocaleDateString("ko-KR")+"</div></div><table><thead><tr><th>사업장</th><th>성명</th><th>부서</th><th>교육명</th><th>이수일시</th><th>서명</th></tr></thead><tbody>"+tb+"</tbody></table><div style='margin-top:20px;text-align:right;font-size:11px;color:#999'>총 "+rows.length+"건</div></body></html>");
   w.document.close();w.onload=function(){w.print();};
 }
