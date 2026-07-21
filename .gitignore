@@ -1,3 +1,6 @@
 node_modules/
 .env
 *.log
+.fursys-deploy-hub/
+.vscode/
+docs/
